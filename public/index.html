@@ -7,14 +7,14 @@
   <title>Personal Cloud Storage</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/babel-standalone@7.24.7/babel.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/babel-standalone@7.24.7/babel.min.js"></script>
 </head>
 
 <body class="bg-gray-100 min-h-screen flex items-center justify-center">
   <div id="root"></div>
   <script type="text/babel">
-    if (typeof React === 'undefined') {
+  if (typeof React === 'undefined') {
     document.getElementById('root').innerHTML = '<h1>React not loaded</h1>';
   } else {
     const { useState, useEffect } = React;
@@ -25,7 +25,7 @@
 
     ReactDOM.render(<App />, document.getElementById('root'));
   }
-  </script>
+</script>
 </body>
 
 </html>
