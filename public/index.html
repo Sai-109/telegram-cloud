@@ -3,15 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Secure Cloud Vault</title>
+  <title>Personal Cloud Storage</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/babel-standalone@7.24.7/babel.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/js-cookie@3.0.5/dist/js.cookie.min.js"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body class="bg-gray-100 min-h-screen">
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+  <h1 style="color: blue;">Test Message</h1>
   <div id="root"></div>
   <script type="text/babel">
     const { useState, useEffect } = React;
@@ -23,59 +22,19 @@
       const [error, setError] = useState('');
       const [loading, setLoading] = useState(false);
       const [fileToUpload, setFileToUpload] = useState(null);
-      const [currentFolder, setCurrentFolder] = useState('root');
-      const [folders, setFolders] = useState(['root']);
-      const [showCreateFolder, setShowCreateFolder] = useState(false);
-      const [newFolderName, setNewFolderName] = useState('');
-      const [storageUsage, setStorageUsage] = useState({ used: 0, total: 1073741824 }); // 1GB default
 
-      // Check for existing session
-      useEffect(() => {
-        const session = Cookies.get('cloud_session');
-        if (session === 'authenticated') {
-          setIsAuthenticated(true);
-          fetchFiles();
-          fetchStorageUsage();
-        }
-      }, []);
+      // Hardcoded password (move to backend in production)
+      const correctPassword = 'mySecurePassword123';
 
       // Handle password submission
-      const handlePasswordSubmit = async (e) => {
+      const handlePasswordSubmit = (e) => {
         e.preventDefault();
-        setLoading(true);
-        
-        try {
-          // In a real app, this would be a server-side check
-          // Here we simulate a secure authentication flow
-          const response = await simulateServerAuth(password);
-          
-          if (response.success) {
-            Cookies.set('cloud_session', 'authenticated', { secure: true, sameSite: 'strict' });
-            setIsAuthenticated(true);
-            setError('');
-            fetchFiles();
-            fetchStorageUsage();
-          } else {
-            setError(response.message);
-          }
-        } catch (err) {
-          setError('Authentication failed');
-        }
-        setLoading(false);
-      };
-
-      // Simulate server authentication (replace with real API call)
-      const simulateServerAuth = async (enteredPassword) => {
-        // In production, this would be a fetch() to your backend
-        await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
-        
-        // This is just for demo - in production never hardcode passwords!
-        const correctPassword = 'mySecurePassword123';
-        
-        if (enteredPassword === correctPassword) {
-          return { success: true };
+        if (password === correctPassword) {
+          setIsAuthenticated(true);
+          setError('');
+          fetchFiles();
         } else {
-          return { success: false, message: 'Invalid credentials' };
+          setError('Incorrect password');
         }
       };
 
@@ -83,33 +42,13 @@
       const fetchFiles = async () => {
         setLoading(true);
         try {
-          // Simulated API response
-          const mockFiles = [
-            { id: '1', name: 'Document.pdf', size: '2.4 MB', type: 'pdf', url: '#', folder: 'root', uploaded: '2023-05-15' },
-            { id: '2', name: 'Vacation.jpg', size: '3.1 MB', type: 'image', url: '#', folder: 'root', uploaded: '2023-05-10' },
-            { id: '3', name: 'Project.zip', size: '15.2 MB', type: 'archive', url: '#', folder: 'work', uploaded: '2023-05-01' }
-          ];
-          
-          // Filter by current folder
-          const filteredFiles = mockFiles.filter(file => file.folder === currentFolder);
-          setFiles(filteredFiles);
+          const response = await fetch('/api/files'); // Vercel serverless function path
+          const data = await response.json();
+          setFiles(data);
         } catch (err) {
           setError('Failed to fetch files');
         }
         setLoading(false);
-      };
-
-      // Fetch storage usage
-      const fetchStorageUsage = async () => {
-        try {
-          // Simulated API response
-          setStorageUsage({
-            used: 256000000, // 256MB used
-            total: 1073741824 // 1GB total
-          });
-        } catch (err) {
-          console.error('Failed to fetch storage data');
-        }
       };
 
       // Handle file upload
@@ -119,401 +58,116 @@
           setError('Please select a file');
           return;
         }
-        
         setLoading(true);
         const formData = new FormData();
         formData.append('file', fileToUpload);
-        formData.append('folder', currentFolder);
-        
         try {
-          // Simulated upload
-          await new Promise(resolve => setTimeout(resolve, 1500));
-          
-          // Add to local state (in real app, this would come from server response)
-          const newFile = {
-            id: Date.now().toString(),
-            name: fileToUpload.name,
-            size: formatFileSize(fileToUpload.size),
-            type: getFileType(fileToUpload.name),
-            url: '#',
-            folder: currentFolder,
-            uploaded: new Date().toISOString().split('T')[0]
-          };
-          
-          setFiles([...files, newFile]);
-          setError('');
-          setFileToUpload(null);
-          
-          // Update storage usage
-          setStorageUsage(prev => ({
-            ...prev,
-            used: prev.used + fileToUpload.size
-          }));
+          const response = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData,
+          });
+          const data = await response.json();
+          if (data.success) {
+            setError('');
+            fetchFiles();
+          } else {
+            setError(data.message || 'Upload failed');
+          }
         } catch (err) {
-          setError('Upload failed. Please try again.');
+          setError('Upload failed');
         }
         setLoading(false);
       };
 
-      // Create new folder
-      const handleCreateFolder = () => {
-        if (!newFolderName.trim()) {
-          setError('Folder name cannot be empty');
-          return;
+      // Handle file download/view
+      const handleFileAction = (fileUrl, action) => {
+        if (action === 'view' && (fileUrl.includes('.jpg') || fileUrl.includes('.png') || fileUrl.includes('.pdf'))) {
+          window.open(fileUrl, '_blank');
+        } else {
+          const link = document.createElement('a');
+          link.href = fileUrl;
+          link.download = '';
+          link.click();
         }
-        
-        setFolders([...folders, newFolderName]);
-        setNewFolderName('');
-        setShowCreateFolder(false);
-      };
-
-      // Format file size
-      const formatFileSize = (bytes) => {
-        if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-      };
-
-      // Get file type
-      const getFileType = (filename) => {
-        const extension = filename.split('.').pop().toLowerCase();
-        const imageTypes = ['jpg', 'jpeg', 'png', 'gif'];
-        const docTypes = ['pdf', 'doc', 'docx', 'txt'];
-        
-        if (imageTypes.includes(extension)) return 'image';
-        if (docTypes.includes(extension)) return 'document';
-        if (extension === 'zip') return 'archive';
-        return 'other';
-      };
-
-      // Handle logout
-      const handleLogout = () => {
-        Cookies.remove('cloud_session');
-        setIsAuthenticated(false);
-        setPassword('');
-        setFiles([]);
-        setCurrentFolder('root');
       };
 
       // Password prompt UI
       if (!isAuthenticated) {
         return (
-          <div class="min-h-screen flex items-center justify-center p-4">
-            <div class="max-w-md w-full bg-white p-8 rounded-xl shadow-lg">
-              <div class="text-center mb-8">
-                <i class="fas fa-cloud-lock-alt text-5xl text-blue-500 mb-4"></i>
-                <h2 class="text-3xl font-bold text-gray-800">Secure Cloud Vault</h2>
-                <p class="text-gray-600 mt-2">Enter your password to access your files</p>
-              </div>
-              
-              <form onSubmit={handlePasswordSubmit} class="space-y-4">
-                <div>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter your password"
-                    required
-                  />
-                </div>
-                
-                {error && (
-                  <div class="bg-red-50 border-l-4 border-red-500 p-4">
-                    <p class="text-red-700">{error}</p>
-                  </div>
-                )}
-                
-                <button
-                  type="submit"
-                  class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition duration-200 flex items-center justify-center"
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <>
-                      <i class="fas fa-spinner fa-spin mr-2"></i>
-                      Verifying...
-                    </>
-                  ) : (
-                    'Unlock Vault'
-                  )}
-                </button>
-              </form>
-            </div>
+          <div class="max-w-md mx-auto bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-2xl font-bold mb-4 text-center">Enter Password</h2>
+            <form onSubmit={handlePasswordSubmit}>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                class="w-full p-2 border rounded mb-4"
+                placeholder="Password"
+              />
+              {error && <p class="text-red-500 mb-4">{error}</p>}
+              <button
+                type="submit"
+                class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600"
+              >
+                Submit
+              </button>
+            </form>
           </div>
         );
       }
 
       // Main file management UI
       return (
-        <div class="min-h-screen bg-gray-50">
-          {/* Header */}
-          <header class="bg-white shadow-sm">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-              <div class="flex items-center space-x-2">
-                <i class="fas fa-cloud text-blue-500 text-2xl"></i>
-                <h1 class="text-xl font-bold text-gray-800">Secure Cloud Vault</h1>
-              </div>
-              
-              <div class="flex items-center space-x-4">
-                <div class="relative">
-                  <button 
-                    class="flex items-center space-x-2 bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-lg transition"
-                    onClick={handleLogout}
-                  >
-                    <i class="fas fa-sign-out-alt text-gray-700"></i>
-                    <span class="hidden sm:inline">Logout</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </header>
-
-          {/* Main Content */}
-          <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            {/* Storage Bar */}
-            <div class="bg-white rounded-lg shadow p-6 mb-8">
-              <div class="flex justify-between items-center mb-2">
-                <h2 class="text-lg font-medium text-gray-800">Storage</h2>
-                <span class="text-sm text-gray-600">
-                  {formatFileSize(storageUsage.used)} of {formatFileSize(storageUsage.total)} used
-                </span>
-              </div>
-              <div class="w-full bg-gray-200 rounded-full h-2.5">
-                <div 
-                  class="bg-blue-600 h-2.5 rounded-full" 
-                  style={{ width: `${(storageUsage.used / storageUsage.total) * 100}%` }}
-                ></div>
-              </div>
-            </div>
-
-            {/* File Management */}
-            <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
-              {/* Sidebar - Folders */}
-              <div class="bg-white rounded-lg shadow overflow-hidden">
-                <div class="p-4 border-b">
-                  <h3 class="font-medium text-gray-800">Folders</h3>
-                </div>
-                <div class="p-4">
-                  <ul class="space-y-1">
-                    {folders.map((folder) => (
-                      <li key={folder}>
-                        <button
-                          onClick={() => setCurrentFolder(folder)}
-                          class={`w-full text-left px-3 py-2 rounded-md flex items-center ${currentFolder === folder ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100'}`}
-                        >
-                          <i class={`fas ${folder === 'root' ? 'fa-home' : 'fa-folder'} mr-2`}></i>
-                          {folder === 'root' ? 'Home' : folder}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                  
-                  {showCreateFolder ? (
-                    <div class="mt-4">
-                      <input
-                        type="text"
-                        value={newFolderName}
-                        onChange={(e) => setNewFolderName(e.target.value)}
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                        placeholder="New folder name"
-                        autoFocus
-                      />
-                      <div class="flex space-x-2 mt-2">
-                        <button
-                          onClick={handleCreateFolder}
-                          class="px-3 py-1 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700"
-                        >
-                          Create
-                        </button>
-                        <button
-                          onClick={() => setShowCreateFolder(false)}
-                          class="px-3 py-1 bg-gray-200 text-gray-800 text-sm rounded-md hover:bg-gray-300"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
+        <div class="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-md">
+          <h2 class="text-2xl font-bold mb-4 text-center">Personal Cloud Storage</h2>
+          <div class="mb-6">
+            <h3 class="text-lg font-semibold mb-2">Upload File</h3>
+            <form onSubmit={handleFileUpload}>
+              <input
+                type="file"
+                onChange={(e) => setFileToUpload(e.target.files[0])}
+                class="mb-4"
+              />
+              <button
+                type="submit"
+                class="bg-blue-500 text-white p-2 rounded hover:bg-blue-600"
+                disabled={loading}
+              >
+                {loading ? 'Uploading...' : 'Upload'}
+              </button>
+            </form>
+            {error && <p class="text-red-500 mt-2">{error}</p>}
+          </div>
+          <h3 class="text-lg font-semibold mb-2">Your Files</h3>
+          {loading ? (
+            <p>Loading files...</p>
+          ) : files.length === 0 ? (
+            <p>No files found.</p>
+          ) : (
+            <ul class="space-y-2">
+              {files.map((file) => (
+                <li key={file.messageId} class="flex justify-between items-center p-2 border rounded">
+                  <span>{file.fileName}</span>
+                  <div>
                     <button
-                      onClick={() => setShowCreateFolder(true)}
-                      class="mt-4 w-full flex items-center justify-center px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md text-sm"
+                      onClick={() => handleFileAction(file.fileUrl, 'view')}
+                      class="bg-green-500 text-white px-3 py-1 rounded mr-2 hover:bg-green-600"
                     >
-                      <i class="fas fa-plus mr-2"></i> New Folder
+                      View
                     </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Main Content Area */}
-              <div class="lg:col-span-3">
-                {/* Upload Card */}
-                <div class="bg-white rounded-lg shadow overflow-hidden mb-6">
-                  <div class="p-4 border-b">
-                    <h3 class="font-medium text-gray-800">Upload Files</h3>
+                    <button
+                      onClick={() => handleFileAction(file.fileUrl, 'download')}
+                      class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
+                    >
+                      Download
+                    </button>
                   </div>
-                  <div class="p-6">
-                    <form onSubmit={handleFileUpload} class="space-y-4">
-                      <div class="flex items-center justify-center w-full">
-                        <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
-                          <div class="flex flex-col items-center justify-center pt-5 pb-6">
-                            <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
-                            <p class="mb-2 text-sm text-gray-500">
-                              <span class="font-semibold">Click to upload</span> or drag and drop
-                            </p>
-                            <p class="text-xs text-gray-500">
-                              {fileToUpload ? fileToUpload.name : 'Any file type up to 50MB'}
-                            </p>
-                          </div>
-                          <input 
-                            type="file" 
-                            class="hidden" 
-                            onChange={(e) => setFileToUpload(e.target.files[0])} 
-                          />
-                        </label>
-                      </div>
-                      
-                      {fileToUpload && (
-                        <div class="flex items-center justify-between bg-blue-50 p-3 rounded-md">
-                          <div class="flex items-center">
-                            <i class="fas fa-file-alt text-blue-500 mr-3"></i>
-                            <div>
-                              <p class="text-sm font-medium text-gray-800">{fileToUpload.name}</p>
-                              <p class="text-xs text-gray-500">{formatFileSize(fileToUpload.size)}</p>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setFileToUpload(null)}
-                            class="text-gray-400 hover:text-gray-600"
-                          >
-                            <i class="fas fa-times"></i>
-                          </button>
-                        </div>
-                      )}
-                      
-                      <div class="flex justify-end">
-                        <button
-                          type="submit"
-                          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md flex items-center"
-                          disabled={!fileToUpload || loading}
-                        >
-                          {loading ? (
-                            <>
-                              <i class="fas fa-spinner fa-spin mr-2"></i>
-                              Uploading...
-                            </>
-                          ) : (
-                            <>
-                              <i class="fas fa-upload mr-2"></i>
-                              Upload File
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </form>
-                    
-                    {error && (
-                      <div class="mt-4 bg-red-50 border-l-4 border-red-500 p-4">
-                        <p class="text-red-700">{error}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Files List */}
-                <div class="bg-white rounded-lg shadow overflow-hidden">
-                  <div class="p-4 border-b flex justify-between items-center">
-                    <h3 class="font-medium text-gray-800">Files in {currentFolder === 'root' ? 'Home' : currentFolder}</h3>
-                    <div class="flex items-center space-x-2">
-                      <button class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md">
-                        <i class="fas fa-sort"></i>
-                      </button>
-                      <button class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md">
-                        <i class="fas fa-filter"></i>
-                      </button>
-                    </div>
-                  </div>
-                  
-                  {loading ? (
-                    <div class="p-8 flex justify-center">
-                      <i class="fas fa-spinner fa-spin text-2xl text-blue-500"></i>
-                    </div>
-                  ) : files.length === 0 ? (
-                    <div class="p-8 text-center">
-                      <i class="fas fa-folder-open text-4xl text-gray-300 mb-3"></i>
-                      <p class="text-gray-500">No files in this folder</p>
-                    </div>
-                  ) : (
-                    <div class="divide-y">
-                      {files.map((file) => (
-                        <div key={file.id} class="p-4 hover:bg-gray-50 flex items-center justify-between">
-                          <div class="flex items-center space-x-4">
-                            <div class={`p-3 rounded-lg ${getFileIconColor(file.type)}`}>
-                              <i class={`fas ${getFileIcon(file.type)} text-white`}></i>
-                            </div>
-                            <div>
-                              <p class="font-medium text-gray-800">{file.name}</p>
-                              <p class="text-sm text-gray-500">
-                                {file.size} • {file.uploaded}
-                              </p>
-                            </div>
-                          </div>
-                          
-                          <div class="flex space-x-2">
-                            <button
-                              onClick={() => handleFileAction(file.url, 'view')}
-                              class="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-md"
-                              title="Preview"
-                            >
-                              <i class="fas fa-eye"></i>
-                            </button>
-                            <button
-                              onClick={() => handleFileAction(file.url, 'download')}
-                              class="p-2 text-green-500 hover:text-green-700 hover:bg-green-50 rounded-md"
-                              title="Download"
-                            >
-                              <i class="fas fa-download"></i>
-                            </button>
-                            <button
-                              onClick={() => {}}
-                              class="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-md"
-                              title="Delete"
-                            >
-                              <i class="fas fa-trash"></i>
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </main>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       );
-
-      // Helper functions for file icons
-      const getFileIcon = (type) => {
-        switch(type) {
-          case 'image': return 'fa-image';
-          case 'document': return 'fa-file-alt';
-          case 'archive': return 'fa-file-archive';
-          default: return 'fa-file';
-        }
-      };
-
-      const getFileIconColor = (type) => {
-        switch(type) {
-          case 'image': return 'bg-pink-500';
-          case 'document': return 'bg-blue-500';
-          case 'archive': return 'bg-yellow-500';
-          default: return 'bg-gray-500';
-        }
-      };
     }
 
     ReactDOM.render(<App />, document.getElementById('root'));
