@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,167 +10,22 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/babel-standalone@7.24.7/babel.min.js"></script>
 </head>
+
 <body class="bg-gray-100 min-h-screen flex items-center justify-center">
   <div id="root"></div>
   <script type="text/babel">
+    if (typeof React === 'undefined') {
+    document.getElementById('root').innerHTML = '<h1>React not loaded</h1>';
+  } else {
     const { useState, useEffect } = React;
 
     function App() {
-      const [isAuthenticated, setIsAuthenticated] = useState(false);
-      const [password, setPassword] = useState('');
-      const [files, setFiles] = useState([]);
-      const [error, setError] = useState('');
-      const [loading, setLoading] = useState(false);
-      const [fileToUpload, setFileToUpload] = useState(null);
-
-      // Hardcoded password (move to backend in production)
-      const correctPassword = 'mySecurePassword123';
-
-      // Handle password submission
-      const handlePasswordSubmit = (e) => {
-        e.preventDefault();
-        if (password === correctPassword) {
-          setIsAuthenticated(true);
-          setError('');
-          fetchFiles();
-        } else {
-          setError('Incorrect password');
-        }
-      };
-
-      // Fetch files from backend
-      const fetchFiles = async () => {
-        setLoading(true);
-        try {
-          const response = await fetch('/api/files'); // Vercel serverless function path
-          const data = await response.json();
-          setFiles(data);
-        } catch (err) {
-          setError('Failed to fetch files');
-        }
-        setLoading(false);
-      };
-
-      // Handle file upload
-      const handleFileUpload = async (e) => {
-        e.preventDefault();
-        if (!fileToUpload) {
-          setError('Please select a file');
-          return;
-        }
-        setLoading(true);
-        const formData = new FormData();
-        formData.append('file', fileToUpload);
-        try {
-          const response = await fetch('/api/upload', {
-            method: 'POST',
-            body: formData,
-          });
-          const data = await response.json();
-          if (data.success) {
-            setError('');
-            fetchFiles();
-          } else {
-            setError(data.message || 'Upload failed');
-          }
-        } catch (err) {
-          setError('Upload failed');
-        }
-        setLoading(false);
-      };
-
-      // Handle file download/view
-      const handleFileAction = (fileUrl, action) => {
-        if (action === 'view' && (fileUrl.includes('.jpg') || fileUrl.includes('.png') || fileUrl.includes('.pdf'))) {
-          window.open(fileUrl, '_blank');
-        } else {
-          const link = document.createElement('a');
-          link.href = fileUrl;
-          link.download = '';
-          link.click();
-        }
-      };
-
-      // Password prompt UI
-      if (!isAuthenticated) {
-        return (
-          <div class="max-w-md mx-auto bg-white p-6 rounded-lg shadow-md">
-            <h2 class="text-2xl font-bold mb-4 text-center">Enter Password</h2>
-            <form onSubmit={handlePasswordSubmit}>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                class="w-full p-2 border rounded mb-4"
-                placeholder="Password"
-              />
-              {error && <p class="text-red-500 mb-4">{error}</p>}
-              <button
-                type="submit"
-                class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600"
-              >
-                Submit
-              </button>
-            </form>
-          </div>
-        );
-      }
-
-      // Main file management UI
-      return (
-        <div class="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-md">
-          <h2 class="text-2xl font-bold mb-4 text-center">Personal Cloud Storage</h2>
-          <div class="mb-6">
-            <h3 class="text-lg font-semibold mb-2">Upload File</h3>
-            <form onSubmit={handleFileUpload}>
-              <input
-                type="file"
-                onChange={(e) => setFileToUpload(e.target.files[0])}
-                class="mb-4"
-              />
-              <button
-                type="submit"
-                class="bg-blue-500 text-white p-2 rounded hover:bg-blue-600"
-                disabled={loading}
-              >
-                {loading ? 'Uploading...' : 'Upload'}
-              </button>
-            </form>
-            {error && <p class="text-red-500 mt-2">{error}</p>}
-          </div>
-          <h3 class="text-lg font-semibold mb-2">Your Files</h3>
-          {loading ? (
-            <p>Loading files...</p>
-          ) : files.length === 0 ? (
-            <p>No files found.</p>
-          ) : (
-            <ul class="space-y-2">
-              {files.map((file) => (
-                <li key={file.messageId} class="flex justify-between items-center p-2 border rounded">
-                  <span>{file.fileName}</span>
-                  <div>
-                    <button
-                      onClick={() => handleFileAction(file.fileUrl, 'view')}
-                      class="bg-green-500 text-white px-3 py-1 rounded mr-2 hover:bg-green-600"
-                    >
-                      View
-                    </button>
-                    <button
-                      onClick={() => handleFileAction(file.fileUrl, 'download')}
-                      class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
-                    >
-                      Download
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      );
+      // Existing App component code here
     }
 
     ReactDOM.render(<App />, document.getElementById('root'));
+  }
   </script>
 </body>
+
 </html>
