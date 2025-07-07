@@ -1,7 +1,6 @@
 import { Telegraf } from 'telegraf';
 import formidable from 'formidable';
 import fs from 'fs';
-import path from 'path';
 
 export const config = {
   api: {
@@ -17,7 +16,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
 
-  const form = formidable({ multiples: false, uploadDir: '/tmp', keepExtensions: true });
+  const form = new formidable.IncomingForm({ uploadDir: '/tmp', keepExtensions: true });
 
   form.parse(req, async (err, fields, files) => {
     if (err) {
@@ -26,9 +25,7 @@ export default async function handler(req, res) {
     }
 
     const file = files.file;
-    if (!file) {
-      return res.status(400).json({ message: 'No file uploaded' });
-    }
+    if (!file) return res.status(400).json({ message: 'No file uploaded' });
 
     try {
       const sentMsg = await bot.telegram.sendDocument(process.env.CHANNEL_ID, {
@@ -42,15 +39,13 @@ export default async function handler(req, res) {
       };
 
       let db = [];
-      if (fs.existsSync(dbPath)) {
-        db = JSON.parse(fs.readFileSync(dbPath));
-      }
+      if (fs.existsSync(dbPath)) db = JSON.parse(fs.readFileSync(dbPath));
       db.push(fileInfo);
       fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
 
       res.status(200).json({ message: 'Uploaded successfully', file: fileInfo });
-    } catch (err) {
-      console.error('Telegram Error:', err);
+    } catch (error) {
+      console.error('Telegram error:', error);
       res.status(500).json({ message: 'Telegram upload failed' });
     }
   });
