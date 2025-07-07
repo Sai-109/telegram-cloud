@@ -16,7 +16,10 @@ export default async function handler(req, res) {
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
 
-  const form = new formidable.IncomingForm({ uploadDir: '/tmp', keepExtensions: true });
+  const form = new formidable.IncomingForm({
+    uploadDir: '/tmp',
+    keepExtensions: true,
+  });
 
   form.parse(req, async (err, fields, files) => {
     if (err) {
@@ -25,7 +28,9 @@ export default async function handler(req, res) {
     }
 
     const file = files.file;
-    if (!file) return res.status(400).json({ message: 'No file uploaded' });
+    if (!file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
 
     try {
       const sentMsg = await bot.telegram.sendDocument(process.env.CHANNEL_ID, {
@@ -39,7 +44,9 @@ export default async function handler(req, res) {
       };
 
       let db = [];
-      if (fs.existsSync(dbPath)) db = JSON.parse(fs.readFileSync(dbPath));
+      if (fs.existsSync(dbPath)) {
+        db = JSON.parse(fs.readFileSync(dbPath));
+      }
       db.push(fileInfo);
       fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
 

@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Telegram Cloud UI</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="./public/output.css" />
 </head>
+
 <body class="bg-gray-100 text-gray-900 flex items-center justify-center min-h-screen">
 
   <div id="root" class="w-full max-w-2xl p-4"></div>
@@ -125,8 +127,11 @@
         );
       }
 
-      ReactDOM.render(<App />, document.getElementById('root'));
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(<App />);
+
     }
   </script>
 </body>
+
 </html>

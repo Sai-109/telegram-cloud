@@ -3,15 +3,17 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "build": "vite build --outDir dist"
+    "build:css": "tailwindcss -i ./src/styles.css -o ./public/output.css --watch"
   },
   "devDependencies": {
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.11",
     "vite": "^7.0.2"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
   "dependencies": {
     "@tailwindcss/cli": "^4.1.11",
     "formidable": "^3.5.4",
@@ -19,7 +21,15 @@
     "next-connect": "^1.0.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "tailwindcss": "^4.1.11",
     "telegraf": "^4.16.3"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Sai-109/telegram-cloud.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Sai-109/telegram-cloud/issues"
+  },
+  "homepage": "https://github.com/Sai-109/telegram-cloud#readme",
+  "description": ""
 }
