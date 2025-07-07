@@ -1,11 +1,132 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Telegram Cloud</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Telegram Cloud UI</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-  <h1>Static Test Page</h1>
+<body class="bg-gray-100 text-gray-900 flex items-center justify-center min-h-screen">
+
+  <div id="root" class="w-full max-w-2xl p-4"></div>
+
+  <!-- React & Babel -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Your App -->
+  <script type="text/babel">
+    if (typeof React === 'undefined' || typeof ReactDOM === 'undefined') {
+      document.getElementById('root').innerHTML = '<h1 class="text-red-500">🚫 React not loaded</h1>';
+    } else {
+      const { useState, useEffect } = React;
+
+      function App() {
+        const [password, setPassword] = useState('');
+        const [authenticated, setAuthenticated] = useState(false);
+        const [files, setFiles] = useState([]);
+        const [selectedFile, setSelectedFile] = useState(null);
+        const correctPassword = "mySecurePassword123"; // Change to your password
+
+        const fetchFiles = async () => {
+          try {
+            const res = await fetch("/api/files");
+            const data = await res.json();
+            setFiles(data);
+          } catch (err) {
+            console.error("Failed to load files", err);
+          }
+        };
+
+        useEffect(() => {
+          if (authenticated) fetchFiles();
+        }, [authenticated]);
+
+        const handleUpload = async () => {
+          if (!selectedFile) return alert("Please select a file");
+          const formData = new FormData();
+          formData.append("file", selectedFile);
+
+          try {
+            const res = await fetch("/api/upload", {
+              method: "POST",
+              body: formData,
+            });
+            const data = await res.json();
+            if (data.message) {
+              alert(data.message);
+              fetchFiles();
+            }
+          } catch (err) {
+            console.error("Upload failed", err);
+          }
+        };
+
+        if (!authenticated) {
+          return (
+            <div className="bg-white p-6 rounded shadow text-center">
+              <h2 className="text-xl mb-4 font-bold">Enter Password</h2>
+              <input
+                type="password"
+                className="border p-2 w-full mb-4"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <button
+                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                onClick={() => {
+                  if (password === correctPassword) {
+                    setAuthenticated(true);
+                  } else {
+                    alert("Wrong password");
+                  }
+                }}
+              >
+                Submit
+              </button>
+            </div>
+          );
+        }
+
+        return (
+          <div className="bg-white p-6 rounded shadow">
+            <h1 className="text-2xl font-bold mb-4">📂 Telegram Cloud</h1>
+
+            <div className="mb-4">
+              <input
+                type="file"
+                onChange={(e) => setSelectedFile(e.target.files[0])}
+              />
+              <button
+                className="ml-2 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+                onClick={handleUpload}
+              >
+                Upload
+              </button>
+            </div>
+
+            <ul className="space-y-2">
+              {files.map((f, idx) => (
+                <li key={idx} className="p-2 bg-gray-100 rounded flex justify-between items-center">
+                  <span>{f.fileName}</span>
+                  <a
+                    href={`https://t.me/${process.env.CHANNEL_USERNAME}/${f.messageId}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-blue-600 underline"
+                  >
+                    View
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      }
+
+      ReactDOM.render(<App />, document.getElementById('root'));
+    }
+  </script>
 </body>
 </html>
