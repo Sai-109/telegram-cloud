@@ -1,13 +1,24 @@
-const fs = require('fs');
-const path = require('path');
-const { Telegraf } = require('telegraf');
-const multer = require('multer');
+import { Telegraf } from 'telegraf';
+import multer from 'multer';
+import fs from 'fs';
+import path from 'path';
 
-const bot = new Telegraf(process.env.BOT_TOKEN);
 const upload = multer({ dest: '/tmp' });
-const dbPath = path.join(__dirname, '..', 'filedb.json');
+const bot = new Telegraf(process.env.BOT_TOKEN);
+const dbPath = path.resolve('/tmp/filedb.json');
 
-module.exports = (req, res) => {
+// Disable body parsing by Next/Vercel
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
+export default function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ message: 'Method Not Allowed' });
+  }
+
   upload.single('file')(req, res, async (err) => {
     if (err) {
       console.error('Upload error:', err);
@@ -19,16 +30,21 @@ module.exports = (req, res) => {
 
     try {
       const filePath = path.join('/tmp', file.filename);
-      const sentMsg = await bot.telegram.sendDocument(process.env.CHANNEL_ID, { source: filePath, filename: file.originalname });
+      const sentMsg = await bot.telegram.sendDocument(process.env.CHANNEL_ID, {
+        source: filePath,
+        filename: file.originalname,
+      });
 
       const fileInfo = {
         fileName: file.originalname,
         messageId: sentMsg.message_id,
       };
 
-      // Save to filedb.json
+      // Save to temp JSON DB
       let db = [];
-      if (fs.existsSync(dbPath)) db = JSON.parse(fs.readFileSync(dbPath));
+      if (fs.existsSync(dbPath)) {
+        db = JSON.parse(fs.readFileSync(dbPath));
+      }
       db.push(fileInfo);
       fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
 
@@ -38,4 +54,4 @@ module.exports = (req, res) => {
       res.status(500).json({ message: 'Telegram upload failed' });
     }
   });
-};
+}
