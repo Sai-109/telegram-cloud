@@ -17,29 +17,32 @@ export default async function handler(req, res) {
 
   const form = new IncomingForm({ uploadDir: '/tmp', keepExtensions: true });
 
-  form.parse(req, async (err, fields, files) => {
-    if (err) {
-      console.error("Form parse error:", err);
-      return res.status(500).json({ message: 'Form parse failed' });
-    }
+form.parse(req, async (err, fields, files) => {
+  if (err) {
+    console.error("❌ Form parse error:", err);
+    return res.status(500).json({ message: 'Form parse failed' });
+  }
 
-    const file = files.file;
-    if (!file) {
-      console.error("No file found.");
-      return res.status(400).json({ message: 'No file uploaded' });
-    }
+  const fileArray = files.file;
+  const file = Array.isArray(fileArray) ? fileArray[0] : fileArray;
 
-    try {
-      console.log("Uploading file:", file.originalFilename);
-      const sent = await bot.telegram.sendDocument(process.env.CHANNEL_ID, {
-        source: fs.createReadStream(file.filepath),
-        filename: file.originalFilename,
-      });
+  if (!file || !file.filepath) {
+    console.error("❌ No valid file uploaded:", file);
+    return res.status(400).json({ message: "File upload failed" });
+  }
 
-      res.status(200).json({ message: 'Uploaded to Telegram', fileId: sent.document?.file_id });
-    } catch (error) {
-      console.error("Telegram upload failed:", error);
-      res.status(500).json({ message: 'Telegram upload failed', error: error.message });
-    }
-  });
+  try {
+    console.log("📤 Uploading to Telegram:", file.originalFilename);
+    const sent = await bot.telegram.sendDocument(process.env.CHANNEL_ID, {
+      source: fs.createReadStream(file.filepath),
+      filename: file.originalFilename,
+    });
+
+    res.status(200).json({ message: 'Uploaded to Telegram', fileId: sent.document?.file_id });
+  } catch (error) {
+    console.error("🔥 Telegram upload failed:", error);
+    res.status(500).json({ message: 'Telegram upload failed', error: error.message });
+  }
+});
+
 }
