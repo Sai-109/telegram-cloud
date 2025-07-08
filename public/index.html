@@ -50,89 +50,130 @@
   </main>
 
   <script type="text/babel">
-    const correctPassword = "webby123";
+  const correctPassword = "webby123";
+  let activeTag = null;
 
-    const checkPassword = () => {
-      const input = document.getElementById("passwordInput").value;
-      if (input === correctPassword) {
-        document.getElementById("authScreen").style.display = "none";
-        document.getElementById("app").classList.remove("hidden");
+  const checkPassword = () => {
+    const input = document.getElementById("passwordInput").value;
+    if (input === correctPassword) {
+      document.getElementById("authScreen").style.display = "none";
+      document.getElementById("app").classList.remove("hidden");
+      loadFiles();
+    } else {
+      alert("Wrong password!");
+    }
+  };
+
+  const handleUpload = async () => {
+    const file = document.getElementById("fileInput").files[0];
+    const tags = document.getElementById("tagInput").value.trim();
+
+    if (!file) return alert("Please select a file.");
+    if (file.size === 0) return alert("Cannot upload empty file.");
+    if (file.size > 1900 * 1024 * 1024) return alert("File too large for Telegram (2 GB max).");
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("tags", tags);
+
+    try {
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        alert("✅ File uploaded!");
+        document.getElementById("tagInput").value = "";
+        document.getElementById("fileInput").value = "";
         loadFiles();
       } else {
-        alert("Wrong password!");
+        throw new Error(data.message || "Upload failed");
       }
-    };
+    } catch (err) {
+      console.error(err);
+      alert("Upload failed");
+    }
+  };
 
-    const handleUpload = async () => {
-      const file = document.getElementById("fileInput").files[0];
-      const tags = document.getElementById("tagInput").value.trim();
+  const loadFiles = async () => {
+    try {
+      const res = await fetch("/api/files");
+      const files = await res.json();
 
-      if (!file) return alert("Please select a file.");
-      if (file.size === 0) return alert("Cannot upload empty file.");
-      if (file.size > 1900 * 1024 * 1024) return alert("File too large for free Telegram (2 GB max).");
+      const grid = document.getElementById("fileGrid");
+      const tagFilter = document.getElementById("tagFilter");
+      grid.innerHTML = "";
+      tagFilter.innerHTML = "";
 
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("tags", tags);
+      const tagSet = new Set();
 
-      try {
-        const res = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
+      // Group tags and prepare file cards
+      files.forEach(file => {
+        (file.tags || []).forEach(tag => tagSet.add(tag));
+      });
 
-        const data = await res.json();
-        if (res.ok) {
-          alert("✅ File uploaded!");
+      // Render tag filter buttons
+      tagSet.forEach(tag => {
+        const btn = document.createElement("button");
+        btn.textContent = `#${tag}`;
+        btn.className = `px-3 py-1 rounded-full text-sm ${
+          tag === activeTag
+            ? "bg-blue-600 text-white"
+            : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+        }`;
+        btn.onclick = () => {
+          activeTag = tag === activeTag ? null : tag;
           loadFiles();
-        } else {
-          throw new Error(data.message || "Upload failed");
-        }
-      } catch (err) {
-        console.error(err);
-        alert("Upload failed");
-      }
-    };
+        };
+        tagFilter.appendChild(btn);
+      });
 
-    const loadFiles = async () => {
-      try {
-        const res = await fetch("/api/files");
-        const files = await res.json();
-        const grid = document.getElementById("fileGrid");
-        const tagFilter = document.getElementById("tagFilter");
-        grid.innerHTML = "";
-        tagFilter.innerHTML = "";
-
-        const tagSet = new Set();
-
-        files.forEach(file => {
-          tagSet.add(...(file.tags || []));
-          const isImage = file.type?.startsWith("image");
+      // Render file cards
+      files
+        .filter(f => !activeTag || f.tags?.includes(activeTag))
+        .forEach(file => {
+          const isImage = file.preview;
           const card = `
-            <div class="bg-white rounded-xl shadow p-4">
-              ${isImage ? `<img src="${file.preview}" class="w-full h-40 object-cover mb-2 rounded">` : `<div class="h-40 flex items-center justify-center bg-gray-200 text-gray-600 rounded mb-2">${file.type?.toUpperCase() || "FILE"}</div>`}
-              <div class="font-semibold">${file.filename}</div>
+            <div class="bg-white rounded-xl shadow p-4 space-y-2">
+              ${
+                isImage
+                  ? `<img src="${file.preview}" class="w-full h-40 object-cover rounded" />`
+                  : `<div class="h-40 flex items-center justify-center bg-gray-100 text-gray-400 rounded">No Preview</div>`
+              }
+              <div class="font-medium truncate">${file.filename}</div>
               <div class="text-sm text-gray-500">${(file.size / 1024).toFixed(1)} KB</div>
-              <div class="flex gap-2 mt-2">
+              <div class="flex gap-2 mt-1">
                 <a href="${file.url}" target="_blank" class="text-blue-600 text-sm underline">View</a>
                 <a href="${file.url}" download class="text-green-600 text-sm underline">Download</a>
+              </div>
+              <div class="flex flex-wrap gap-1 mt-2">
+                ${
+                  (file.tags || [])
+                    .map(t => `<span class="text-xs bg-gray-100 px-2 py-0.5 rounded-full">#${t}</span>`)
+                    .join("")
+                }
               </div>
             </div>
           `;
           grid.insertAdjacentHTML("beforeend", card);
         });
 
-        tagSet.forEach(tag => {
-          const btn = `<button class="px-3 py-1 bg-gray-200 rounded-full text-sm">${tag}</button>`;
-          tagFilter.insertAdjacentHTML("beforeend", btn);
-        });
+      // Show analytics (optional)
+      document.getElementById("analyticsPanel").classList.remove("hidden");
+      document.getElementById("analyticsData").innerHTML = `
+        <p>Total Files: <strong>${files.length}</strong></p>
+        <p>Total Size: <strong>${(files.reduce((sum, f) => sum + f.size, 0) / 1024 / 1024).toFixed(2)} MB</strong></p>
+      `;
 
-      } catch (err) {
-        console.error(err);
-        document.getElementById("fileGrid").innerHTML = "<p class='text-red-500'>⚠️ Failed to load files</p>";
-      }
-    };
-  </script>
+    } catch (err) {
+      console.error(err);
+      document.getElementById("fileGrid").innerHTML = "<p class='text-red-500'>⚠️ Failed to load files</p>";
+    }
+  };
+</script>
+
 
   <!-- Babel + React Dev (will remove later) -->
   <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
