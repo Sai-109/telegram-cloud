@@ -1,137 +1,143 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Telegram Cloud UI</title>
-  <link rel="stylesheet" href="./public/output.css" />
+  <title>Webby's Cloud</title>
+  <link href="/output.css" rel="stylesheet">
 </head>
+<body class="bg-gray-100 text-gray-900">
 
-<body class="bg-gray-100 text-gray-900 flex items-center justify-center min-h-screen">
+  <!-- Password Prompt -->
+  <div id="authScreen" class="fixed inset-0 flex items-center justify-center bg-white z-50">
+    <div class="bg-gray-100 p-6 rounded-xl shadow-xl text-center space-y-4">
+      <h2 class="text-xl font-bold">Enter Access Password</h2>
+      <input id="passwordInput" type="password" class="px-4 py-2 rounded border w-full" placeholder="Password..." />
+      <button onclick="checkPassword()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Enter</button>
+    </div>
+  </div>
 
-  <div id="root" class="w-full max-w-2xl p-4"></div>
+  <main id="app" class="hidden px-4 py-6 max-w-6xl mx-auto space-y-8">
 
-  <!-- React & Babel -->
-  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+      <h1 class="text-3xl font-bold">📁 Webby's Cloud</h1>
+      <div class="text-sm text-gray-500">Private Storage UI</div>
+    </div>
+
+    <!-- Upload Section -->
+    <div class="bg-white p-6 rounded-xl shadow-md">
+      <h2 class="text-xl font-semibold mb-2">Upload New File</h2>
+      <input type="file" id="fileInput" class="mb-2" />
+      <input type="text" id="tagInput" class="mb-2 block w-full border px-3 py-2 rounded" placeholder="Tags (comma separated)" />
+      <button onclick="handleUpload()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Upload</button>
+    </div>
+
+    <!-- Filters -->
+    <div id="tagFilter" class="flex flex-wrap gap-2"></div>
+
+    <!-- File Grid -->
+    <div id="fileGrid" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <!-- Files will be injected here -->
+    </div>
+
+    <!-- Analytics Placeholder -->
+    <div id="analyticsPanel" class="bg-white p-6 rounded-xl shadow-md mt-10 hidden">
+      <h2 class="text-xl font-semibold mb-4">📊 Storage Analytics</h2>
+      <div id="analyticsData">Coming soon...</div>
+    </div>
+
+  </main>
+
+  <script type="text/babel">
+    const correctPassword = "webby123";
+
+    const checkPassword = () => {
+      const input = document.getElementById("passwordInput").value;
+      if (input === correctPassword) {
+        document.getElementById("authScreen").style.display = "none";
+        document.getElementById("app").classList.remove("hidden");
+        loadFiles();
+      } else {
+        alert("Wrong password!");
+      }
+    };
+
+    const handleUpload = async () => {
+      const file = document.getElementById("fileInput").files[0];
+      const tags = document.getElementById("tagInput").value.trim();
+
+      if (!file) return alert("Please select a file.");
+      if (file.size === 0) return alert("Cannot upload empty file.");
+      if (file.size > 1900 * 1024 * 1024) return alert("File too large for free Telegram (2 GB max).");
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("tags", tags);
+
+      try {
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          alert("✅ File uploaded!");
+          loadFiles();
+        } else {
+          throw new Error(data.message || "Upload failed");
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Upload failed");
+      }
+    };
+
+    const loadFiles = async () => {
+      try {
+        const res = await fetch("/api/files");
+        const files = await res.json();
+        const grid = document.getElementById("fileGrid");
+        const tagFilter = document.getElementById("tagFilter");
+        grid.innerHTML = "";
+        tagFilter.innerHTML = "";
+
+        const tagSet = new Set();
+
+        files.forEach(file => {
+          tagSet.add(...(file.tags || []));
+          const isImage = file.type?.startsWith("image");
+          const card = `
+            <div class="bg-white rounded-xl shadow p-4">
+              ${isImage ? `<img src="${file.preview}" class="w-full h-40 object-cover mb-2 rounded">` : `<div class="h-40 flex items-center justify-center bg-gray-200 text-gray-600 rounded mb-2">${file.type?.toUpperCase() || "FILE"}</div>`}
+              <div class="font-semibold">${file.filename}</div>
+              <div class="text-sm text-gray-500">${(file.size / 1024).toFixed(1)} KB</div>
+              <div class="flex gap-2 mt-2">
+                <a href="${file.url}" target="_blank" class="text-blue-600 text-sm underline">View</a>
+                <a href="${file.url}" download class="text-green-600 text-sm underline">Download</a>
+              </div>
+            </div>
+          `;
+          grid.insertAdjacentHTML("beforeend", card);
+        });
+
+        tagSet.forEach(tag => {
+          const btn = `<button class="px-3 py-1 bg-gray-200 rounded-full text-sm">${tag}</button>`;
+          tagFilter.insertAdjacentHTML("beforeend", btn);
+        });
+
+      } catch (err) {
+        console.error(err);
+        document.getElementById("fileGrid").innerHTML = "<p class='text-red-500'>⚠️ Failed to load files</p>";
+      }
+    };
+  </script>
+
+  <!-- Babel + React Dev (will remove later) -->
+  <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-  <!-- Your App -->
-  <script type="text/babel">
-    if (typeof React === 'undefined' || typeof ReactDOM === 'undefined') {
-      document.getElementById('root').innerHTML = '<h1 class="text-red-500">🚫 React not loaded</h1>';
-    } else {
-      const { useState, useEffect } = React;
-
-      function App() {
-        const [password, setPassword] = useState('');
-        const [authenticated, setAuthenticated] = useState(false);
-        const [files, setFiles] = useState([]);
-        const [selectedFile, setSelectedFile] = useState(null);
-        const correctPassword = "mySecurePassword123"; // Change to your password
-
-        const fetchFiles = async () => {
-          try {
-            const res = await fetch("/api/files");
-            const data = await res.json();
-            setFiles(data);
-          } catch (err) {
-            console.error("Failed to load files", err);
-          }
-        };
-
-        useEffect(() => {
-          if (authenticated) fetchFiles();
-        }, [authenticated]);
-
-        const handleUpload = async () => {
-          if (!selectedFile) return alert("Please select a file");
-          const formData = new FormData();
-          formData.append("file", selectedFile);
-
-          try {
-            const res = await fetch("/api/upload", {
-              method: "POST",
-              body: formData,
-            });
-            const data = await res.json();
-            if (data.message) {
-              alert(data.message);
-              fetchFiles();
-            }
-          } catch (err) {
-            console.error("Upload failed", err);
-          }
-        };
-
-        if (!authenticated) {
-          return (
-            <div className="bg-white p-6 rounded shadow text-center">
-              <h2 className="text-xl mb-4 font-bold">Enter Password</h2>
-              <input
-                type="password"
-                className="border p-2 w-full mb-4"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-              <button
-                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                onClick={() => {
-                  if (password === correctPassword) {
-                    setAuthenticated(true);
-                  } else {
-                    alert("Wrong password");
-                  }
-                }}
-              >
-                Submit
-              </button>
-            </div>
-          );
-        }
-
-        return (
-          <div className="bg-white p-6 rounded shadow">
-            <h1 className="text-2xl font-bold mb-4">📂 Telegram Cloud</h1>
-
-            <div className="mb-4">
-              <input
-                type="file"
-                onChange={(e) => setSelectedFile(e.target.files[0])}
-              />
-              <button
-                className="ml-2 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
-                onClick={handleUpload}
-              >
-                Upload
-              </button>
-            </div>
-
-            <ul className="space-y-2">
-              {files.map((f, idx) => (
-                <li key={idx} className="p-2 bg-gray-100 rounded flex justify-between items-center">
-                  <span>{f.fileName}</span>
-                  <a
-                    href={`https://t.me/${process.env.CHANNEL_USERNAME}/${f.messageId}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-blue-600 underline"
-                  >
-                    View
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-        );
-      }
-
-      const root = ReactDOM.createRoot(document.getElementById('root'));
-      root.render(<App />);
-
-    }
-  </script>
 </body>
-
 </html>
